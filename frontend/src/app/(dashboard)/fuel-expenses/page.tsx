@@ -72,52 +72,6 @@ interface Maintenance {
   status: string;
 }
 
-// Mocks matching the mockups exactly
-const mockFuelLogs = [
-  {
-    id: 'fl1',
-    vehicleName: 'VAN-05',
-    date: '05 Jul 2026',
-    liters: '42 L',
-    cost: 3150,
-  },
-  {
-    id: 'fl2',
-    vehicleName: 'TRUCK-11',
-    date: '06 Jul 2026',
-    liters: '110 L',
-    cost: 8400,
-  },
-  {
-    id: 'fl3',
-    vehicleName: 'MINI-08',
-    date: '06 Jul 2026',
-    liters: '28 L',
-    cost: 2050,
-  },
-];
-
-const mockExpenses = [
-  {
-    id: 'e1',
-    tripCode: 'TR001',
-    vehicleName: 'VAN-05',
-    toll: 120,
-    other: 0,
-    maint: 0,
-    status: 'Available',
-  },
-  {
-    id: 'e2',
-    tripCode: 'TR002',
-    vehicleName: 'TRK-12',
-    toll: 340,
-    other: 150,
-    maint: 18000,
-    status: 'Completed',
-  },
-];
-
 export default function FuelExpensesPage() {
   const queryClient = useQueryClient();
   const [isFuelModalOpen, setIsFuelModalOpen] = useState(false);
@@ -270,49 +224,40 @@ export default function FuelExpensesPage() {
 
   // Helper formatting for dynamic values
   const displayFuelLogs = useMemo(() => {
-    if (dbFuelLogs.length > 0) {
-      return dbFuelLogs.map((fl) => ({
-        id: fl.id,
-        vehicleName: fl.vehicle ? `${fl.vehicle.manufacturer} ${fl.vehicle.model}` : 'Fleet Vehicle',
-        date: new Date(fl.fuelDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        liters: `${fl.liters} L`,
-        cost: fl.totalCost,
-      }));
-    }
-    return mockFuelLogs;
+    return dbFuelLogs.map((fl) => ({
+      id: fl.id,
+      vehicleName: fl.vehicle ? `${fl.vehicle.manufacturer} ${fl.vehicle.model}` : 'Fleet Vehicle',
+      date: new Date(fl.fuelDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      liters: `${fl.liters} L`,
+      cost: fl.totalCost,
+    }));
   }, [dbFuelLogs]);
 
   const displayExpenses = useMemo(() => {
-    if (dbExpenses.length > 0) {
-      return dbExpenses.map((ex, i) => {
-        // Link to maintenance costs dynamically
-        const linkedMaint = dbMaint.find(m => m.vehicleId === ex.vehicleId);
-        const maintCost = linkedMaint ? linkedMaint.cost : 0;
-        const maintStatus = linkedMaint ? linkedMaint.status : 'COMPLETED';
+    return dbExpenses.map((ex, i) => {
+      // Link to maintenance costs dynamically
+      const linkedMaint = dbMaint.find(m => m.vehicleId === ex.vehicleId);
+      const maintCost = linkedMaint ? linkedMaint.cost : 0;
+      const maintStatus = linkedMaint ? linkedMaint.status : 'COMPLETED';
 
-        return {
-          id: ex.id,
-          tripCode: `TR00${i + 1}`,
-          vehicleName: ex.vehicle ? `${ex.vehicle.manufacturer} ${ex.vehicle.model}` : 'Fleet Vehicle',
-          toll: ex.category === 'TOLL' ? ex.amount : 0,
-          other: ex.category !== 'TOLL' ? ex.amount : 0,
-          maint: maintCost,
-          status: maintStatus === 'COMPLETED' ? 'Completed' : 'Available',
-        };
-      });
-    }
-    return mockExpenses;
+      return {
+        id: ex.id,
+        tripCode: `TR00${i + 1}`,
+        vehicleName: ex.vehicle ? `${ex.vehicle.manufacturer} ${ex.vehicle.model}` : 'Fleet Vehicle',
+        toll: ex.category === 'TOLL' ? ex.amount : 0,
+        other: ex.category !== 'TOLL' ? ex.amount : 0,
+        maint: maintCost,
+        status: maintStatus === 'COMPLETED' ? 'Completed' : 'Available',
+      };
+    });
   }, [dbExpenses, dbMaint]);
 
   // Compute Total Cost (auto calculated)
   const totalCostValue = useMemo(() => {
-    if (dbFuelLogs.length > 0 || dbExpenses.length > 0) {
-      const fuelTotal = dbFuelLogs.reduce((sum, item) => sum + item.totalCost, 0);
-      const maintTotal = dbMaint.reduce((sum, item) => sum + (item.status === 'COMPLETED' ? item.cost : 0), 0);
-      const tollTotal = dbExpenses.reduce((sum, item) => sum + item.amount, 0);
-      return fuelTotal + maintTotal + tollTotal;
-    }
-    return 34070; // Fallback matches drawing
+    const fuelTotal = dbFuelLogs.reduce((sum, item) => sum + item.totalCost, 0);
+    const maintTotal = dbMaint.reduce((sum, item) => sum + (item.status === 'COMPLETED' ? item.cost : 0), 0);
+    const tollTotal = dbExpenses.reduce((sum, item) => sum + item.amount, 0);
+    return fuelTotal + maintTotal + tollTotal;
   }, [dbFuelLogs, dbExpenses, dbMaint]);
 
   const isLoading = isFuelLoading || isExpenseLoading || isVehiclesLoading || isTripsLoading || isMaintLoading;
@@ -372,16 +317,24 @@ export default function FuelExpensesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y text-gray-700">
-                  {displayFuelLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-3.5 px-6 font-semibold text-gray-900">{log.vehicleName}</td>
-                      <td className="py-3.5 px-3 text-muted-foreground">{log.date}</td>
-                      <td className="py-3.5 px-3 text-muted-foreground">{log.liters}</td>
-                      <td className="py-3.5 px-6 text-right font-semibold text-gray-900">
-                        {log.cost.toLocaleString('en-US')}
+                  {displayFuelLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="text-center py-8 text-sm text-muted-foreground font-semibold">
+                        No fuel logs recorded. Click &quot;+ Log Fuel&quot; to add one.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    displayFuelLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-3.5 px-6 font-semibold text-gray-900">{log.vehicleName}</td>
+                        <td className="py-3.5 px-3 text-muted-foreground">{log.date}</td>
+                        <td className="py-3.5 px-3 text-muted-foreground">{log.liters}</td>
+                        <td className="py-3.5 px-6 text-right font-semibold text-gray-900">
+                          {log.cost.toLocaleString('en-US')}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -407,20 +360,28 @@ export default function FuelExpensesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y text-gray-700">
-                  {displayExpenses.map((exp) => (
-                    <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-3.5 px-6 font-semibold text-gray-900">{exp.tripCode}</td>
-                      <td className="py-3.5 px-3 text-muted-foreground">{exp.vehicleName}</td>
-                      <td className="py-3.5 px-3 text-muted-foreground">{exp.toll > 0 ? exp.toll.toLocaleString('en-US') : '0'}</td>
-                      <td className="py-3.5 px-3 text-muted-foreground">{exp.other > 0 ? exp.other.toLocaleString('en-US') : '0'}</td>
-                      <td className="py-3.5 px-3 text-muted-foreground">{exp.maint > 0 ? exp.maint.toLocaleString('en-US') : '0'}</td>
-                      <td className="py-3.5 px-6 text-right">
-                        <Badge variant={exp.status === 'Completed' ? 'success' : 'info'}>
-                          {exp.status}
-                        </Badge>
+                  {displayExpenses.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-sm text-muted-foreground font-semibold">
+                        No expense logs recorded. Click &quot;+ Add Expense&quot; to add one.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    displayExpenses.map((exp) => (
+                      <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-3.5 px-6 font-semibold text-gray-900">{exp.tripCode}</td>
+                        <td className="py-3.5 px-3 text-muted-foreground">{exp.vehicleName}</td>
+                        <td className="py-3.5 px-3 text-muted-foreground">{exp.toll > 0 ? exp.toll.toLocaleString('en-US') : '0'}</td>
+                        <td className="py-3.5 px-3 text-muted-foreground">{exp.other > 0 ? exp.other.toLocaleString('en-US') : '0'}</td>
+                        <td className="py-3.5 px-3 text-muted-foreground">{exp.maint > 0 ? exp.maint.toLocaleString('en-US') : '0'}</td>
+                        <td className="py-3.5 px-6 text-right">
+                          <Badge variant={exp.status === 'Completed' ? 'success' : 'info'}>
+                            {exp.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

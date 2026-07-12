@@ -101,12 +101,26 @@ export default function DashboardPage() {
     },
   });
 
+  // 3. Fetch Fuel Logs for Chart
+  const {
+    data: fuelLogsResponse,
+    isLoading: isFuelLoading,
+    refetch: refetchFuel,
+  } = useQuery<ApiResponse<{ fuelLogs: { totalCost: number; fuelDate: string }[] }>>({
+    queryKey: ['dashboard-fuel'],
+    queryFn: async () => {
+      const res = await api.get('/fuel-logs?limit=7');
+      return res.data;
+    },
+  });
+
   const handleSyncData = () => {
     refetchMetrics();
     refetchVehicles();
+    refetchFuel();
   };
 
-  const isLoading = isMetricsLoading || isVehiclesLoading;
+  const isLoading = isMetricsLoading || isVehiclesLoading || isFuelLoading;
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -137,103 +151,32 @@ export default function DashboardPage() {
     }).format(val);
   };
 
-  // Mock vehicles mapping
-  const mockVehicles = [
-    {
-      id: 'v1',
-      manufacturer: 'Volvo',
-      model: 'FH16',
-      registrationNumber: 'ABC-1234',
-      vehicleType: 'TRUCK',
-      status: 'AVAILABLE',
-      location: 'Berlin, DE',
-      lastMaintenance: 'Oct 12, 2023',
-    },
-    {
-      id: 'v2',
-      manufacturer: 'Mercedes',
-      model: 'Sprinter',
-      registrationNumber: 'XYZ-8890',
-      vehicleType: 'VAN',
-      status: 'ON_TRIP',
-      location: 'Prague, CZ',
-      lastMaintenance: 'Nov 05, 2023',
-    },
-    {
-      id: 'v3',
-      manufacturer: 'Toyota',
-      model: 'Camry',
-      registrationNumber: 'KKL-5561',
-      vehicleType: 'CAR',
-      status: 'IN_MAINTENANCE',
-      location: 'Depot 4, Warsaw',
-      lastMaintenance: 'Aug 22, 2023',
-    },
-    {
-      id: 'v4',
-      manufacturer: 'Scania',
-      model: 'R450',
-      registrationNumber: 'POW-3321',
-      vehicleType: 'TRUCK',
-      status: 'RETIRED',
-      location: 'Munich, DE',
-      lastMaintenance: 'Dec 01, 2023',
-    },
-  ];
+  const displayVehicles = dbVehicles.slice(0, 5).map((v) => ({
+    id: v.id,
+    manufacturer: v.manufacturer,
+    model: v.model,
+    registrationNumber: v.registrationNumber,
+    vehicleType: v.vehicleType,
+    status: v.status,
+    location: 'Depot HQ',
+    lastMaintenance: new Date(v.updatedAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+  }));
 
-  // Helper to format locations
-  const getVehicleLocation = (regNo: string) => {
-    const locs: Record<string, string> = {
-      'ABC-1234': 'Berlin, DE',
-      'XYZ-8890': 'Prague, CZ',
-      'KKL-5561': 'Depot 4, Warsaw',
-      'POW-3321': 'Munich, DE',
-    };
-    return locs[regNo] || 'Berlin, DE';
-  };
-
-  const getVehicleLastMaintenance = (regNo: string, updatedAt: string) => {
-    const dates: Record<string, string> = {
-      'ABC-1234': 'Oct 12, 2023',
-      'XYZ-8890': 'Nov 05, 2023',
-      'KKL-5561': 'Aug 22, 2023',
-      'POW-3321': 'Dec 01, 2023',
-    };
-    return dates[regNo] || new Date(updatedAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-  };
-
-  const displayVehicles = dbVehicles.length > 0 
-    ? dbVehicles.slice(0, 5).map(v => ({
-        id: v.id,
-        manufacturer: v.manufacturer,
-        model: v.model,
-        registrationNumber: v.registrationNumber,
-        vehicleType: v.vehicleType,
-        status: v.status,
-        location: getVehicleLocation(v.registrationNumber),
-        lastMaintenance: getVehicleLastMaintenance(v.registrationNumber, v.updatedAt.toString()),
-      }))
-    : mockVehicles;
-
-  // Fallback default fuel chart data matching Screen 1 (with 6th bar highlighted)
-  const fuelChartData = [
-    { date: 'Oct 18', amount: 500 },
-    { date: 'Oct 19', amount: 590 },
-    { date: 'Oct 20', amount: 350 },
-    { date: 'Oct 21', amount: 980 },
-    { date: 'Oct 22', amount: 620 },
-    { date: 'Oct 23', amount: 720 }, // This bar is highlighted
-    { date: 'Oct 24', amount: 480 },
-  ];
+  // Dynamic fuel chart data mapping
+  const rawFuelLogs = fuelLogsResponse?.data?.fuelLogs || [];
+  const fuelChartData = [...rawFuelLogs].reverse().map((log) => ({
+    date: new Date(log.fuelDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }),
+    amount: log.totalCost,
+  }));
 
   // Vehicle Status distribution Pie Data
   const pieData = [
-    { name: 'In Transit', value: metrics.vehicles.onTrip || 42, color: '#0052cc' },
-    { name: 'Available', value: metrics.vehicles.available || 12, color: '#10b981' },
-    { name: 'Maintenance', value: metrics.vehicles.inMaintenance || 5, color: '#ef4444' },
+    { name: 'In Transit', value: metrics.vehicles.onTrip, color: '#0052cc' },
+    { name: 'Available', value: metrics.vehicles.available, color: '#10b981' },
+    { name: 'Maintenance', value: metrics.vehicles.inMaintenance, color: '#ef4444' },
   ];
 
-  const totalStatusVehicles = pieData.reduce((sum, item) => sum + item.value, 0);
+  const totalStatusVehicles = metrics.vehicles.total;
 
 
 
@@ -266,7 +209,7 @@ export default function DashboardPage() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Active Vehicles</span>
-              <p className="text-3xl font-extrabold text-foreground">{metrics.vehicles.total || 42}</p>
+              <p className="text-3xl font-extrabold text-foreground">{metrics.vehicles.total}</p>
               <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5">
                 <span>↑</span> +4.2%
               </span>
@@ -282,7 +225,7 @@ export default function DashboardPage() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Available</span>
-              <p className="text-3xl font-extrabold text-foreground">{metrics.vehicles.available || 12}</p>
+              <p className="text-3xl font-extrabold text-foreground">{metrics.vehicles.available}</p>
               <span className="text-[10px] text-muted-foreground font-medium">Steady vs yesterday</span>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#0052cc]">
@@ -296,7 +239,7 @@ export default function DashboardPage() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Maintenance</span>
-              <p className="text-3xl font-extrabold text-foreground">{metrics.vehicles.inMaintenance || 5}</p>
+              <p className="text-3xl font-extrabold text-foreground">{metrics.vehicles.inMaintenance}</p>
               <span className="text-[10px] text-rose-500 font-medium flex items-center gap-0.5">
                 <span>⚠</span> Action required
               </span>
@@ -312,8 +255,8 @@ export default function DashboardPage() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Drivers On Duty</span>
-              <p className="text-3xl font-extrabold text-foreground">{metrics.drivers.total || 38}</p>
-              <span className="text-[10px] text-emerald-600 font-medium">84% Capacity</span>
+              <p className="text-3xl font-extrabold text-foreground">{metrics.drivers.total}</p>
+              <span className="text-[10px] text-emerald-600 font-medium">Active pool</span>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
               <Users className="h-5.5 w-5.5" />
@@ -326,8 +269,8 @@ export default function DashboardPage() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Trips Running</span>
-              <p className="text-3xl font-extrabold text-foreground">{metrics.trips.ongoing || 24}</p>
-              <span className="text-[10px] text-muted-foreground font-medium">7 delayed currently</span>
+              <p className="text-3xl font-extrabold text-foreground">{metrics.trips.ongoing}</p>
+              <span className="text-[10px] text-muted-foreground font-medium">Currently active</span>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
               <Route className="h-5.5 w-5.5" />
@@ -341,10 +284,10 @@ export default function DashboardPage() {
             <div className="space-y-1">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Fuel Cost Today</span>
               <p className="text-3xl font-extrabold text-foreground">
-                {formatCurrency(metrics.finance.totalFuelCost || 1240)}
+                {formatCurrency(metrics.finance.totalFuelCost)}
               </p>
               <span className="text-[10px] text-rose-500 font-medium flex items-center gap-0.5">
-                <span>↑</span> +12% vs avg
+                <span>↑</span> Refueling total
               </span>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-500">
@@ -358,8 +301,8 @@ export default function DashboardPage() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Pending Maintenance</span>
-              <p className="text-3xl font-extrabold text-foreground">{metrics.maintenance.pending || 3}</p>
-              <span className="text-[10px] text-muted-foreground font-medium">Scheduled this week</span>
+              <p className="text-3xl font-extrabold text-foreground">{metrics.maintenance.pending}</p>
+              <span className="text-[10px] text-muted-foreground font-medium">Scheduled</span>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
               <Calendar className="h-5.5 w-5.5" />
@@ -372,9 +315,9 @@ export default function DashboardPage() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Fleet Utilization</span>
-              <p className="text-3xl font-extrabold text-foreground">{metrics.fleetUtilization || 88}%</p>
+              <p className="text-3xl font-extrabold text-foreground">{metrics.fleetUtilization}%</p>
               <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-0.5">
-                <span>~</span> High efficiency
+                <span>~</span> Active utilization
               </span>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-500">
@@ -398,24 +341,31 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-6">
             <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={fuelChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                  <XAxis dataKey="date" tickLine={false} axisLine={false} className="text-xs text-muted-foreground" />
-                  <YAxis tickLine={false} axisLine={false} className="text-xs text-muted-foreground" />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #edf2f7', backgroundColor: '#fff' }}
-                    labelClassName="font-bold text-slate-700"
-                  />
-                  <Bar dataKey="amount" radius={[6, 6, 0, 0]} barSize={40}>
-                    {fuelChartData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={index === 5 ? '#0052cc' : '#b4cffc'}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              {fuelChartData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-xs text-muted-foreground font-semibold border border-dashed rounded-xl bg-slate-50/50">
+                  <span>No fuel logs registered yet.</span>
+                  <span className="text-[10px] font-normal text-slate-400 mt-1">Refuel logs will populate here.</span>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={fuelChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                    <XAxis dataKey="date" tickLine={false} axisLine={false} className="text-xs text-muted-foreground" />
+                    <YAxis tickLine={false} axisLine={false} className="text-xs text-muted-foreground" />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #edf2f7', backgroundColor: '#fff' }}
+                      labelClassName="font-bold text-slate-700"
+                    />
+                    <Bar dataKey="amount" radius={[6, 6, 0, 0]} barSize={40}>
+                      {fuelChartData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={index === fuelChartData.length - 1 ? '#0052cc' : '#b4cffc'}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -426,42 +376,50 @@ export default function DashboardPage() {
             <CardTitle className="text-base font-bold text-foreground">Vehicle Status Distribution</CardTitle>
           </CardHeader>
           <CardContent className="p-6 flex-1 flex flex-col justify-center items-center">
-            <div className="relative h-48 w-full flex justify-center items-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={75}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`${value} Vehicles`]} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute flex flex-col items-center justify-center">
-                <span className="text-3xl font-black text-foreground">{totalStatusVehicles}</span>
-                <span className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground mt-0.5">Total</span>
+            {totalStatusVehicles === 0 ? (
+              <div className="flex flex-col items-center justify-center h-48 w-full text-xs text-muted-foreground font-semibold border border-dashed rounded-xl bg-slate-50/50">
+                <span>No vehicles registered.</span>
               </div>
-            </div>
-            {/* Custom Legends list */}
-            <div className="w-full space-y-2 mt-4 px-2">
-              {pieData.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center text-xs">
-                  <div className="flex items-center space-x-2">
-                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-muted-foreground font-medium">{item.name}</span>
+            ) : (
+              <>
+                <div className="relative h-48 w-full flex justify-center items-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={75}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => [`${value} Vehicles`]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute flex flex-col items-center justify-center">
+                    <span className="text-3xl font-black text-foreground">{totalStatusVehicles}</span>
+                    <span className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground mt-0.5">Total</span>
                   </div>
-                  <span className="font-bold text-foreground">{item.value}</span>
                 </div>
-              ))}
-            </div>
+                {/* Custom Legends list */}
+                <div className="w-full space-y-2 mt-4 px-2">
+                  {pieData.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-xs">
+                      <div className="flex items-center space-x-2">
+                        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="text-muted-foreground font-medium">{item.name}</span>
+                      </div>
+                      <span className="font-bold text-foreground">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -490,40 +448,48 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {displayVehicles.map((vehicle) => (
-                    <tr key={vehicle.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="py-3.5 px-6 font-semibold text-foreground">
-                        {vehicle.manufacturer} {vehicle.model}
-                      </td>
-                      <td className="py-3.5 px-3 text-muted-foreground capitalize">
-                        {vehicle.vehicleType.toLowerCase()}
-                      </td>
-                      <td className="py-3.5 px-3 text-muted-foreground">
-                        {vehicle.registrationNumber}
-                      </td>
-                      <td className="py-3.5 px-3">
-                        <Badge
-                          variant={
-                            vehicle.status === 'AVAILABLE'
-                              ? 'success'
-                              : vehicle.status === 'ON_TRIP'
-                              ? 'info'
-                              : vehicle.status === 'IN_MAINTENANCE'
-                              ? 'warning'
-                              : 'destructive'
-                          }
-                        >
-                          {vehicle.status === 'IN_MAINTENANCE' ? 'In Shop' : vehicle.status === 'AVAILABLE' ? 'Available' : vehicle.status === 'ON_TRIP' ? 'On Trip' : 'Retired'}
-                        </Badge>
-                      </td>
-                      <td className="py-3.5 px-3 text-muted-foreground">
-                        {vehicle.location}
-                      </td>
-                      <td className="py-3.5 px-6 text-right text-muted-foreground font-medium">
-                        {vehicle.lastMaintenance}
+                  {displayVehicles.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-sm text-muted-foreground font-semibold">
+                        No vehicles or recent activity registered.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    displayVehicles.map((vehicle) => (
+                      <tr key={vehicle.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="py-3.5 px-6 font-semibold text-foreground">
+                          {vehicle.manufacturer} {vehicle.model}
+                        </td>
+                        <td className="py-3.5 px-3 text-muted-foreground capitalize">
+                          {vehicle.vehicleType.toLowerCase()}
+                        </td>
+                        <td className="py-3.5 px-3 text-muted-foreground">
+                          {vehicle.registrationNumber}
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <Badge
+                            variant={
+                              vehicle.status === 'AVAILABLE'
+                                ? 'success'
+                                : vehicle.status === 'ON_TRIP'
+                                ? 'info'
+                                : vehicle.status === 'IN_MAINTENANCE'
+                                ? 'warning'
+                                : 'destructive'
+                            }
+                          >
+                            {vehicle.status === 'IN_MAINTENANCE' ? 'In Shop' : vehicle.status === 'AVAILABLE' ? 'Available' : vehicle.status === 'ON_TRIP' ? 'On Trip' : 'Retired'}
+                          </Badge>
+                        </td>
+                        <td className="py-3.5 px-3 text-muted-foreground">
+                          {vehicle.location}
+                        </td>
+                        <td className="py-3.5 px-6 text-right text-muted-foreground font-medium">
+                          {vehicle.lastMaintenance}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

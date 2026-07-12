@@ -23,6 +23,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { LoadingScreen } from '@/components/ui/spinner';
 import { ApiResponse } from '@/types';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // Validation Schema for Driver Form
 const driverFormSchema = z.object({
@@ -47,49 +48,7 @@ interface Driver {
   safetyScore?: number;
 }
 
-// Mock Drivers matching screen 3 exactly
-const mockDrivers: Driver[] = [
-  {
-    id: 'd1',
-    name: 'David Chen',
-    email: 'david.chen@transitops.com',
-    phone: '+1 (555) 019-2834',
-    licenseNumber: 'DL-88219',
-    licenseExpiry: '2025-11-20T00:00:00.000Z',
-    status: 'AVAILABLE',
-    safetyScore: 98,
-  },
-  {
-    id: 'd2',
-    name: 'Sarah Jenkins',
-    email: 'sarah.j@transitops.com',
-    phone: '+1 (555) 014-9982',
-    licenseNumber: 'DL-88402',
-    licenseExpiry: '2023-10-24T00:00:00.000Z',
-    status: 'OFF_DUTY',
-    safetyScore: 82,
-  },
-  {
-    id: 'd3',
-    name: 'Robert Kilburn',
-    email: 'robert.k@transitops.com',
-    phone: '+1 (555) 012-4411',
-    licenseNumber: 'DL-87291',
-    licenseExpiry: '2023-05-15T00:00:00.000Z',
-    status: 'SUSPENDED',
-    safetyScore: 45,
-  },
-  {
-    id: 'd4',
-    name: 'Priya Sharma',
-    email: 'priya.s@transitops.com',
-    phone: '+1 (555) 017-8891',
-    licenseNumber: 'DL-88933',
-    licenseExpiry: '2026-03-15T00:00:00.000Z',
-    status: 'AVAILABLE',
-    safetyScore: 94,
-  },
-];
+
 
 export default function DriverDirectoryPage() {
   const queryClient = useQueryClient();
@@ -183,12 +142,10 @@ export default function DriverDirectoryPage() {
   const dbDrivers = useMemo(() => response?.data || [], [response?.data]);
 
   const displayDrivers = useMemo(() => {
-    let list = dbDrivers.length > 0 
-      ? dbDrivers.map(d => ({
-          ...d,
-          safetyScore: d.name === 'David Chen' ? 98 : d.name === 'Sarah Jenkins' ? 82 : d.name === 'Robert Kilburn' ? 45 : d.name === 'Priya Sharma' ? 94 : 85,
-        }))
-      : mockDrivers;
+    let list = dbDrivers.map((d) => ({
+      ...d,
+      safetyScore: d.name === 'David Chen' ? 98 : d.name === 'Sarah Jenkins' ? 82 : d.name === 'Robert Kilburn' ? 45 : d.name === 'Priya Sharma' ? 94 : 85,
+    }));
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -369,101 +326,110 @@ export default function DriverDirectoryPage() {
       </Card>
 
       {/* Driver Grid Layout */}
-      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {displayDrivers.map((driver) => {
-          const validity = getLicenseValidity(driver.licenseExpiry);
-          return (
-            <Card key={driver.id} className="rounded-2xl border bg-white overflow-hidden hover:shadow-md transition-shadow relative">
-              <CardContent className="p-6 space-y-4">
-                {/* Header row with avatar and circular safety score */}
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center space-x-3.5">
-                    {/* Driver Avatar */}
-                    <div className="relative">
-                      <div className="h-14 w-14 rounded-full overflow-hidden border bg-blue-50 flex items-center justify-center text-[#0052cc] text-xl font-bold font-sans">
-                        {driver.name.split(' ').map(n => n[0]).join('')}
+      {displayDrivers.length === 0 ? (
+        <EmptyState
+          title="No drivers registered"
+          description="Get started by registering a new driver into the compliance directory."
+          actionLabel="Register Driver"
+          onAction={handleOpenAddModal}
+        />
+      ) : (
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {displayDrivers.map((driver) => {
+            const validity = getLicenseValidity(driver.licenseExpiry);
+            return (
+              <Card key={driver.id} className="rounded-2xl border bg-white overflow-hidden hover:shadow-md transition-shadow relative">
+                <CardContent className="p-6 space-y-4">
+                  {/* Header row with avatar and circular safety score */}
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center space-x-3.5">
+                      {/* Driver Avatar */}
+                      <div className="relative">
+                        <div className="h-14 w-14 rounded-full overflow-hidden border bg-blue-50 flex items-center justify-center text-[#0052cc] text-xl font-bold font-sans">
+                          {driver.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <span className={`absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${
+                          driver.status === 'AVAILABLE'
+                            ? 'bg-emerald-500'
+                            : driver.status === 'ON_TRIP'
+                            ? 'bg-blue-500'
+                            : driver.status === 'OFF_DUTY'
+                            ? 'bg-amber-500'
+                            : 'bg-rose-500'
+                        }`} />
                       </div>
-                      <span className={`absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${
-                        driver.status === 'AVAILABLE'
-                          ? 'bg-emerald-500'
-                          : driver.status === 'ON_TRIP'
-                          ? 'bg-blue-500'
-                          : driver.status === 'OFF_DUTY'
-                          ? 'bg-amber-500'
-                          : 'bg-rose-500'
-                      }`} />
+                      {/* Driver Info */}
+                      <div className="flex flex-col">
+                        <h3 className="font-bold text-gray-900 leading-none">{driver.name}</h3>
+                        <span className="text-[10px] text-muted-foreground font-semibold mt-1">ID: #{driver.licenseNumber}</span>
+                      </div>
                     </div>
-                    {/* Driver Info */}
-                    <div className="flex flex-col">
-                      <h3 className="font-bold text-gray-900 leading-none">{driver.name}</h3>
-                      <span className="text-[10px] text-muted-foreground font-semibold mt-1">ID: #{driver.licenseNumber}</span>
+
+                    {/* Safety Score donut visual */}
+                    <div className="flex flex-col items-center">
+                      <div className="relative h-11 w-11 flex items-center justify-center rounded-full border-2 border-[#e2e8f0]">
+                        <span className="text-xs font-extrabold text-foreground">{driver.safetyScore || 90}</span>
+                      </div>
+                      <span className="text-[8px] font-bold text-muted-foreground uppercase mt-1 tracking-wider">Safety Score</span>
                     </div>
                   </div>
 
-                  {/* Safety Score donut visual */}
-                  <div className="flex flex-col items-center">
-                    <div className="relative h-11 w-11 flex items-center justify-center rounded-full border-2 border-[#e2e8f0]">
-                      <span className="text-xs font-extrabold text-foreground">{driver.safetyScore || 90}</span>
+                  {/* Details Section */}
+                  <div className="space-y-2 border-t pt-3.5 text-xs text-muted-foreground">
+                    <div className="flex justify-between">
+                      <span>License Type</span>
+                      <span className="font-bold text-gray-800">{driver.name === 'Sarah Jenkins' || driver.name === 'Priya Sharma' ? 'Class B' : 'Class A (CDL)'}</span>
                     </div>
-                    <span className="text-[8px] font-bold text-muted-foreground uppercase mt-1 tracking-wider">Safety Score</span>
-                  </div>
-                </div>
-
-                {/* Details Section */}
-                <div className="space-y-2 border-t pt-3.5 text-xs text-muted-foreground">
-                  <div className="flex justify-between">
-                    <span>License Type</span>
-                    <span className="font-bold text-gray-800">{driver.name === 'Sarah Jenkins' || driver.name === 'Priya Sharma' ? 'Class B' : 'Class A (CDL)'}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Validity</span>
-                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${validity.color}`}>
-                      {validity.icon}
-                      <span>{validity.label}</span>
+                    <div className="flex justify-between items-center">
+                      <span>Validity</span>
+                      <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${validity.color}`}>
+                        {validity.icon}
+                        <span>{validity.label}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Exp. Date</span>
+                      <span className="font-semibold text-gray-800">
+                        {new Date(driver.licenseExpiry).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Exp. Date</span>
-                    <span className="font-semibold text-gray-800">
-                      {new Date(driver.licenseExpiry).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
-                    </span>
+
+                  {/* Actions row */}
+                  <div className="flex items-center gap-2 border-t pt-3.5">
+                    <Button size="sm" className="flex-1 bg-[#0052cc] hover:bg-[#004099] text-white text-xs font-semibold rounded-lg py-2">
+                      Assign Trip
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1 text-gray-700 bg-white border-[#e2e8f0] text-xs font-semibold rounded-lg py-2 hover:bg-gray-50">
+                      View Profile
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleOpenDeleteModal(driver)}
+                      className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-0 rounded-lg"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            );
+          })}
 
-                {/* Actions row */}
-                <div className="flex items-center gap-2 border-t pt-3.5">
-                  <Button size="sm" className="flex-1 bg-[#0052cc] hover:bg-[#004099] text-white text-xs font-semibold rounded-lg py-2">
-                    Assign Trip
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex-1 text-gray-700 bg-white border-[#e2e8f0] text-xs font-semibold rounded-lg py-2 hover:bg-gray-50">
-                    View Profile
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleOpenDeleteModal(driver)}
-                    className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-0 rounded-lg"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-
-        {/* Register New Driver Placeholder Card */}
-        <Card
-          onClick={handleOpenAddModal}
-          className="rounded-2xl border border-dashed border-[#cbd5e1] hover:border-[#0052cc] transition-all bg-slate-50/50 hover:bg-white flex flex-col items-center justify-center p-6 text-center cursor-pointer min-h-[220px]"
-        >
-          <div className="h-10 w-10 rounded-full border border-[#cbd5e1] flex items-center justify-center text-slate-500 hover:text-[#0052cc] bg-white mb-3">
-            <Plus className="h-5 w-5" />
-          </div>
-          <span className="text-sm font-bold text-slate-700">Register New Driver</span>
-          <span className="text-xs text-muted-foreground mt-1 max-w-[200px]">Add a licensed fleet driver directory profiles.</span>
-        </Card>
-      </div>
+          {/* Register New Driver Placeholder Card */}
+          <Card
+            onClick={handleOpenAddModal}
+            className="rounded-2xl border border-dashed border-[#cbd5e1] hover:border-[#0052cc] transition-all bg-slate-50/50 hover:bg-white flex flex-col items-center justify-center p-6 text-center cursor-pointer min-h-[220px]"
+          >
+            <div className="h-10 w-10 rounded-full border border-[#cbd5e1] flex items-center justify-center text-slate-500 hover:text-[#0052cc] bg-white mb-3">
+              <Plus className="h-5 w-5" />
+            </div>
+            <span className="text-sm font-bold text-slate-700">Register New Driver</span>
+            <span className="text-xs text-muted-foreground mt-1 max-w-[200px]">Add a licensed fleet driver directory profiles.</span>
+          </Card>
+        </div>
+      )}
 
       {/* -------------------- ADD DRIVER MODAL -------------------- */}
       <Modal
