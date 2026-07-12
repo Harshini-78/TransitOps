@@ -12,15 +12,17 @@ import {
   Route,
   Wrench,
   Fuel,
-  DollarSign,
   BarChart3,
   Settings,
   LogOut,
   Menu,
   X,
-  User,
   Sun,
   Moon,
+  Bell,
+  History,
+  Search,
+  HelpCircle,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
@@ -33,13 +35,12 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Vehicles', href: '/vehicles', icon: Truck },
+  { label: 'Fleet', href: '/vehicles', icon: Truck },
   { label: 'Drivers', href: '/drivers', icon: Users },
   { label: 'Trips', href: '/trips', icon: Route },
   { label: 'Maintenance', href: '/maintenance', icon: Wrench },
-  { label: 'Fuel Logs', href: '/fuel-logs', icon: Fuel },
-  { label: 'Expenses', href: '/expenses', icon: DollarSign },
-  { label: 'Reports', href: '/reports', icon: BarChart3 },
+  { label: 'Fuel & Expenses', href: '/fuel-expenses', icon: Fuel },
+  { label: 'Analytics', href: '/analytics', icon: BarChart3 },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -57,65 +58,74 @@ export default function DashboardLayout({
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
-  const getBreadcrumb = () => {
-    const segment = pathname.split('/').filter(Boolean)[0];
-    if (!segment) return 'Dashboard';
-    return segment.charAt(0).toUpperCase() + segment.slice(1);
-  };
-
   return (
     <ProtectedRoute>
       <div className="flex h-screen w-screen overflow-hidden bg-muted/10 dark:bg-background">
         {/* Desktop Sidebar (Permanent) */}
-        <aside className="hidden md:flex md:w-64 md:flex-col border-r bg-card text-card-foreground">
+        <aside className="hidden md:flex md:w-64 md:flex-col border-r border-slate-100 dark:border-slate-800/40 bg-card text-card-foreground">
           {/* Logo */}
-          <div className="flex h-16 items-center px-6 border-b">
-            <Link href="/dashboard" className="flex items-center space-x-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-primary-foreground font-bold">
-                T
+          <div className="flex h-16 items-center px-6 border-b border-slate-100 dark:border-slate-800/40">
+            <Link href="/dashboard" className="flex items-center space-x-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0052cc] text-white">
+                <Truck className="h-5 w-5 stroke-[2.5]" />
               </div>
-              <span className="font-bold text-lg tracking-tight text-foreground">TransitOps ERP</span>
+              <div className="flex flex-col">
+                <span className="font-bold text-lg tracking-tight leading-none text-[#002b74] dark:text-[#60a5fa] font-sans">
+                  TransitOps
+                </span>
+                <span className="text-[9px] font-semibold tracking-wider text-muted-foreground uppercase mt-0.5">
+                  Fleet Management
+                </span>
+              </div>
             </Link>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-4 py-4 overflow-y-auto">
+          <nav className="flex-1 space-y-1.5 px-4 py-4 overflow-y-auto">
             {navItems.map((item) => {
-              const active = pathname.startsWith(item.href);
+              const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
               const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     active
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-secondary text-secondary-foreground font-semibold shadow-sm'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className={`h-4.5 w-4.5 ${active ? 'text-primary' : ''}`} />
                   <span>{item.label}</span>
                 </Link>
               );
             })}
           </nav>
 
+          {/* Dispatch Button Section */}
+          <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800/40">
+            <Link href="/trips">
+              <Button className="w-full bg-[#0052cc] hover:bg-[#004099] text-white py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2 font-semibold">
+                <span className="text-lg font-light leading-none">+</span>
+                <span>New Dispatch</span>
+              </Button>
+            </Link>
+          </div>
+
           {/* User & Logout Footer */}
-          <div className="p-4 border-t space-y-2">
-            <div className="flex items-center space-x-3 px-3 py-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border">
-                <User className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <p className="text-xs font-semibold truncate leading-none text-foreground">{user?.name}</p>
-                <span className="text-[10px] text-muted-foreground font-medium uppercase">{user?.role}</span>
-              </div>
-            </div>
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800/40 space-y-1">
+            <Link
+              href="/support"
+              className="flex items-center space-x-3 px-3.5 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
+            >
+              <HelpCircle className="h-4.5 w-4.5" />
+              <span>Support</span>
+            </Link>
             <button
               onClick={logout}
-              className="flex w-full items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+              className="flex w-full items-center space-x-3 px-3.5 py-2 rounded-xl text-sm font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all text-left"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4.5 w-4.5" />
               <span>Logout</span>
             </button>
           </div>
@@ -130,59 +140,53 @@ export default function DashboardLayout({
               onClick={() => setSidebarOpen(false)}
             />
             {/* Drawer */}
-            <aside className="relative z-50 flex w-64 flex-col bg-card border-r text-card-foreground p-4">
-              <div className="flex h-12 items-center justify-between border-b pb-4 mb-4">
-                <Link href="/dashboard" className="flex items-center space-x-2" onClick={() => setSidebarOpen(false)}>
-                  <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-primary-foreground font-bold">
-                    T
+            <aside className="relative z-50 flex w-64 flex-col bg-card border-r border-slate-100 dark:border-slate-800/40 text-card-foreground p-4">
+              <div className="flex h-12 items-center justify-between border-b border-slate-100 dark:border-slate-800/40 pb-4 mb-4">
+                <Link href="/dashboard" className="flex items-center space-x-3" onClick={() => setSidebarOpen(false)}>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0052cc] text-white">
+                    <Truck className="h-5 w-5 stroke-[2.5]" />
                   </div>
-                  <span className="font-bold text-md">TransitOps ERP</span>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-md leading-none text-[#002b74] dark:text-[#60a5fa]">TransitOps</span>
+                    <span className="text-[8px] font-semibold text-muted-foreground uppercase mt-0.5">Fleet Management</span>
+                  </div>
                 </Link>
                 <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
                   <X className="h-5 w-5" />
                 </Button>
               </div>
 
-              <nav className="flex-1 space-y-1 overflow-y-auto">
+              <nav className="flex-1 space-y-1.5 overflow-y-auto">
                 {navItems.map((item) => {
-                  const active = pathname.startsWith(item.href);
+                  const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
                   const Icon = item.icon;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                         active
-                          ? 'bg-primary text-primary-foreground'
+                          ? 'bg-secondary text-secondary-foreground font-semibold shadow-sm'
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className={`h-4.5 w-4.5 ${active ? 'text-primary' : ''}`} />
                       <span>{item.label}</span>
                     </Link>
                   );
                 })}
               </nav>
 
-              <div className="pt-4 border-t mt-4 space-y-2">
-                <div className="flex items-center space-x-3 px-3 py-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <p className="text-xs font-semibold truncate leading-none">{user?.name}</p>
-                    <span className="text-[10px] text-muted-foreground font-medium uppercase">{user?.role}</span>
-                  </div>
-                </div>
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800/40 mt-4 space-y-2">
                 <button
                   onClick={() => {
                     setSidebarOpen(false);
                     logout();
                   }}
-                  className="flex w-full items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                  className="flex w-full items-center space-x-3 px-3.5 py-2 rounded-xl text-sm font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all text-left"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-4.5 w-4.5" />
                   <span>Logout</span>
                 </button>
               </div>
@@ -193,8 +197,8 @@ export default function DashboardLayout({
         {/* Main Window */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Header */}
-          <header className="flex h-16 items-center justify-between border-b bg-card px-6">
-            <div className="flex items-center space-x-4">
+          <header className="flex h-16 items-center justify-between border-b border-slate-100 dark:border-slate-800/40 bg-card px-6">
+            <div className="flex items-center space-x-4 flex-1 max-w-md">
               <Button
                 variant="ghost"
                 size="icon"
@@ -203,25 +207,46 @@ export default function DashboardLayout({
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <h2 className="text-md font-semibold text-muted-foreground">
-                {getBreadcrumb()}
-              </h2>
+              <div className="relative w-full hidden md:block">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search vehicles, drivers, or trips..."
+                  className="w-full bg-[#f4f6fa] dark:bg-muted/40 border-0 rounded-xl pl-10 pr-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                />
+              </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               {/* Theme Toggle */}
-              <Button variant="ghost" size="icon" onClick={toggleTheme}>
+              <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-muted-foreground hover:text-foreground">
                 <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                 <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                 <span className="sr-only">Toggle theme</span>
               </Button>
 
-              {/* User Dropdown Profile Summary */}
-              <div className="hidden md:flex items-center space-x-2 border-l pl-4">
-                <span className="text-sm font-medium text-foreground">{user?.name}</span>
-                <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase">
-                  {user?.role}
-                </span>
+              {/* Notification icon */}
+              <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
+                <Bell className="h-5 w-5" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500" />
+              </Button>
+
+              {/* History icon */}
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:inline-flex">
+                <History className="h-5 w-5" />
+              </Button>
+
+              {/* User Profile Summary */}
+              <div className="flex items-center space-x-3 border-l border-slate-100 dark:border-slate-800/40 pl-4">
+                <div className="flex flex-col text-right hidden sm:flex">
+                  <span className="text-sm font-bold text-foreground leading-none">{user?.name || 'Alex Rivera'}</span>
+                  <span className="text-[10px] text-muted-foreground font-semibold uppercase mt-1">
+                    {user?.role === 'ADMIN' ? 'FLEET ADMIN' : user?.role || 'FLEET ADMIN'}
+                  </span>
+                </div>
+                <div className="h-9 w-9 rounded-full overflow-hidden border border-[#0052cc]/20 bg-[#0052cc]/10 flex items-center justify-center text-[#0052cc] font-bold text-sm">
+                  {user?.name ? user.name.split(' ').map(n => n[0]).join('') : 'AR'}
+                </div>
               </div>
             </div>
           </header>

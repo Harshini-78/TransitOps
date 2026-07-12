@@ -31,23 +31,23 @@
 }
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f4f6fa;
+  --foreground: #1e293b;
   
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #1e293b;
   
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
+  --popover-foreground: #1e293b;
   
-  /* Premium Odoo-inspired Slate/Purple primary */
-  --primary: #714b67;
+  /* TransitOps Corporate Royal Blue */
+  --primary: #0052cc;
   --primary-foreground: #ffffff;
   
-  --secondary: #e2e8f0;
-  --secondary-foreground: #0f172a;
+  --secondary: #e8f0fe;
+  --secondary-foreground: #0052cc;
   
-  --muted: #f1f5f9;
+  --muted: #f8fafc;
   --muted-foreground: #64748b;
   
   --accent: #f1f5f9;
@@ -56,9 +56,9 @@
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   
-  --border: #e2e8f0;
-  --input: #cbd5e1;
-  --ring: #714b67;
+  --border: #edf2f7;
+  --input: #e2e8f0;
+  --ring: #0052cc;
 }
 
 .dark {
@@ -95,4 +95,8 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+*, ::after, ::before, ::backdrop, ::file-selector-button {
+  border-color: var(--border, #edf2f7);
 }
